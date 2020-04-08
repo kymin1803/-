@@ -1,0 +1,159 @@
+
+#define _CRT_SECURE_NO_WARNINGS     // Visual Studio 컴파일 오류 방지
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+struct Node {
+    int no;         // 노드 넘버
+    double x;      // x좌표
+    double y;      // y좌표
+    int deg[3];      //디그리 오브 프리덤 xyz방향
+};
+
+struct Element {
+    int no;             // 엘리먼트 넘버
+    int node[2];        // 연결된 노드 2개
+    double d_x;        // 시작 x좌표 - 끝 x 좌표
+    double d_y;        // 시작 y좌표 - 끝 y 좌표
+    double length;      // 부재의 길이
+    double λ[2];    // 람다 값
+};
+
+struct Load {
+    int no;            // 로드 넘버
+    int number;         // 하중이 작용하는 노드 넘버
+    char direction;      // 하중 방향
+    double magnitude;   // 하중 크기
+};
+
+// (E+i)->x[0] = (N+(E+))->x
+
+void readNodeInformation(FILE* fin, struct Node* N, int Node_number) {
+    int i;
+
+    printf("Node\n");
+    for (i = 0; i < Node_number; i++) {
+        fscanf(fin, "%d %lf %lf %d %d %d", &(N + i)->no, &(N + i)->x, &(N + i)->y, &(N + i)->deg[0], &(N + i)->deg[1], &(N + i)->deg[2]);
+        printf("%d %lf %lf %d %d %d\n", (N + i)->no, (N + i)->x, (N + i)->y, (N + i)->deg[0], (N + i)->deg[1], (N + i)->deg[2]);
+    }
+    printf("\n");
+}//end of readNodeInformation
+
+readElementInformation(FILE* fin, struct Element* E, int Element_number) {
+    int i;
+
+    // (E + i)->x = 
+
+    printf("Element\n");
+    for (i = 0; i < Element_number; i++) {
+        fscanf(fin, "%d %d %d", &(E + i)->no, &(E + i)->node[0], &(E + i)->node[1]);
+        printf("%d %d %d\n", (E + i)->no, (E + i)->node[0], (E + i)->node[1]);
+    }
+    printf("\n");
+
+}//end of readElementInformation
+
+readLoadInformation(FILE* fin, struct Load* L, int Load_number) {
+    int i;
+
+    printf("Load\n");
+    for (i = 0; i < Load_number; i++) {
+        fscanf(fin, "%d %d %c %lf", &(L + i)->no, &(L + i)->number, &(L + i)->direction, &(L + i)->magnitude);
+        printf("%d %d %c %lf\n", (L + i)->no, (L + i)->number, (L + i)->direction, (L + i)->magnitude);
+    }
+    printf("\n");
+}//end of readLoadInformation
+
+
+calculateAngle(FILE* fin, struct Node* N, struct Element* E, int Element_number) {
+    int i;
+
+    printf("λ\n");
+    for (i = 0; i < Element_number; i++) {
+        (E + i)->d_x = (N + ((E + i)->node[1]-1))->x - (N + ((E + i)->node[0]-1))->x;        // printf("(E + i)->d_x %lf\n", (E + i)->d_x);
+        (E + i)->d_y = (N + ((E + i)->node[1]-1))->y - (N + ((E + i)->node[0]-1))->y;        // printf("(E + i)->d_y %lf\n", (E + i)->d_y);
+        (E + i)->length = sqrt((E + i)->d_x * (E + i)->d_x + (E + i)->d_y * (E + i)->d_y);   // printf("(E + i)->length %lf\n", (E + i)->length);
+        (E + i)->λ[0] = (E + i)->d_x / (E + i)->length;                                      // printf("(E + i)->angle[0] %lf\n", (E + i)->λ[0]);
+        (E + i)->λ[1] = (E + i)->d_y / (E + i)->length;                                      // printf("(E + i)->angle[1] %lf\n", (E + i)->λ[1]);
+        printf("%d %lf %lf\n", (E + i)->no, (E + i)->λ[0], (E + i)->λ[1]);
+    }
+}//end of readElementInformation
+
+
+
+
+
+writeFile(FILE* fout, struct Node* N, struct Element* E, struct Load* L, int Node_number, int Element_number, int Load_number) {
+    int i;
+
+    fprintf(fout, "Node, Element, Load(Number)\n");
+    fprintf(fout, "%d %5d %5d\n", Node_number, Element_number, Load_number);
+    fprintf(fout, "\n");
+
+    fprintf(fout, "Node\n");
+    fprintf(fout, "(Node_number, x_coordinate, y_coordinate, degree_of_freedom_x, degree_of_freedom_y, degree_of_freedom_z\n");
+    for (i = 0; i < Node_number; i++){
+        fprintf(fout, "%d %10lf %10lf %5d %5d %5d\n", (N + i)->no, (N + i)->x, (N + i)->y, (N + i)->deg[0], (N + i)->deg[1], (N + i)->deg[2]);
+    }
+    fprintf(fout, "\n");
+
+    fprintf(fout, "Element\n");
+    fprintf(fout, "(Element_number, 1st_node, 2nd_node, λ_x, λ_y)\n");
+    for (i = 0; i < Element_number; i++){
+        fprintf(fout, "%d %5d %5d %10lf %10lf\n", (E + i)->no, (E + i)->node[0], (E + i)->node[1], (E + i)->λ[0], (E + i)->λ[1]);
+    }
+    fprintf(fout, "\n");
+
+    fprintf(fout, "Load\n");
+    fprintf(fout, "(Load_number, location_number, load_direction, magnitude)\n");
+    for (i = 0; i < Load_number; i++){
+        fprintf(fout, "%d %5d %5c %10lf\n", (L + i)->no, (L + i)->number, (L + i)->direction, (L + i)->magnitude);
+    }
+    fprintf(fout, "\n");
+}//end of writeFile
+
+void main(void) {
+    int Node_number = 0, Element_number = 0, Load_number = 0;
+    FILE* fin, * fout;
+
+    struct Node* N;
+    struct Element* E;
+    struct Load* L;
+
+    fin = fopen("C:\\Users\\~~~\\"     //파일 경로
+                "\\input(영민).txt", "r");    //파일 이름
+    fout = fopen("C:\\Users\\~~~\\"    //파일 경로
+                 "\\output(영민).txt", "w+");  // 파일 이름
+
+    ////////// 파일 에러 방지 //////////
+    if (fin <= 0) {
+        printf("FILE input ERROR\n");
+        exit(1);
+    }
+
+    if (fout <= 0) {
+        printf("FILE output ERROR\n");
+        exit(1);
+    }
+    ////////// 파일 에러 방지 //////////
+
+    fscanf(fin, "%d %d %d", &Node_number, &Element_number, &Load_number);
+    printf("Node, Element, Load (Number)\n%d %d %d\n\n", Node_number, Element_number, Load_number);
+
+    N = (struct Node*) calloc(Node_number, sizeof(struct Node));
+    E = (struct Element*) calloc(Element_number, sizeof(struct Element));
+    L = (struct Load*) calloc(Load_number, sizeof(struct Load));
+
+    readNodeInformation(fin, N, Node_number);
+    readElementInformation(fin, E, Element_number);
+    readLoadInformation(fin, L, Load_number);
+    calculateAngle(fin, N, E, Element_number);
+    writeFile(fout, N, E, L, Node_number, Element_number, Load_number);
+   
+    fclose(fin);
+    fclose(fout);
+    free(N);
+    free(E);
+    free(L);
+}
